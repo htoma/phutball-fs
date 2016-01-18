@@ -90,11 +90,13 @@ let possibleBallPositions (board: BoardElement[,]) =
      |> List.filter (fun (x,y) -> x<>i && y<>j)
 
 let possiblePlayerPositions (board: BoardElement[,]) =
-    board
-    |> Array2D.mapi (fun i j el -> if el=BoardElement.Empty then (i,j) else (-1,j))
-    |> Seq.cast<int*int>
-    |> Seq.filter (fun (i,j) -> i>=0)
-    |> List.ofSeq
+    let empty = board
+                |> Array2D.mapi (fun i j el -> if el=BoardElement.Empty then (i,j) else (-1,j))
+                |> Seq.cast<int*int>
+                |> Seq.filter (fun (i,j) -> i>=0)
+                |> List.ofSeq
+    // can't allow the last empty position to be occupied by a player
+    if empty.Length>1 then empty else []
 
 let moveBall (board: BoardElement[,]) (x,y) = 
     let a,b = findBall board
@@ -153,7 +155,36 @@ let move (board: BoardElement[,]) (moveType: MoveType) (x,y) =
         | MoveType.Ball -> 
             moveBall board (x,y)
 
+let printPlayOption() =
+    printfn "Select move"
+    printfn "1 - Player"
+    printfn "2 - Ball"
+
+let printPositions positions =
+    printfn "Available positions"
+    positions
+    |> List.map (fun (x,y) -> printf "(%i,%i)" x y)
+
 let play (board: BoardElement[,]) = 
+    let rec turn (state: GameState) (board: BoardElement[,]) = 
+        if turn=GameState.Over then
+            printfn "Game Over!"
+        else
+            print board
+            printPlayOption()
+            let key = Console.ReadKey()
+            match key with
+            | 1 ->
+                let positions = possiblePlayerPositions board
+                match positions with
+                | [] -> 
+                    printfn "There is no available position for placing a player"
+                    turn GameState.On board
+                | _ ->
+                    printPositions positions
+                    printfn "Select a position for your player: x,y"
+                    let line = Console.ReadLine()
+                    
     
 
 let board = initialize (19,15)
