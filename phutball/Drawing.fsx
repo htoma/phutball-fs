@@ -3,7 +3,7 @@ open System.Windows.Forms
 open System.Drawing
 
 let width = 370
-let height = 600
+let height = 610
 
 let cellsX = 14    
 let cellsY = 18
@@ -18,8 +18,8 @@ let cellSize = 20
 let form = new Form(Width= width, Height = height, Visible = true, Text = "Phutball") 
 form.TopMost <- true
 
-let drawButton x y caption = 
-    let button = new Button(Text=caption, Top=y, Left=x, BackColor=Color.Beige, Size=new Size(80,50))
+let drawButton x y caption sizeX sizeY = 
+    let button = new Button(Text=caption, Top=y, Left=x, BackColor=Color.Beige, Size=new Size(sizeX, sizeY))
     form.Controls.Add button
 
 let drawBoard (g:Graphics) = 
@@ -51,7 +51,14 @@ let drawBoard (g:Graphics) =
     for i in [0..cellsY+goalPosts] do
         g.DrawLine(pen, offsetX, offsetY+i*cellSize, offsetX+width, offsetY+i*cellSize)
 
-    drawButton offsetX (offsetY+height+2*cellSize+2*offsetTextY) "Ball"
+    let buttonSpacing = 10
+    let buttonWidth = (width-buttonSpacing)/2
+    let buttonHeight = 30
+    let buttonY = offsetY+height+80
+    drawButton offsetX buttonY "Ball" buttonWidth buttonHeight   
+    drawButton (offsetX+buttonSpacing+buttonWidth) buttonY "Player" buttonWidth buttonHeight
+    drawButton offsetX (buttonY+buttonSpacing+buttonHeight) "OK" buttonWidth buttonHeight
+    drawButton (offsetX+buttonSpacing+buttonWidth) (buttonY+buttonSpacing+buttonHeight) "Undo" buttonWidth buttonHeight
 
 let drawStone (g:Graphics) x y =
     use brush = new SolidBrush(Color.Coral)
