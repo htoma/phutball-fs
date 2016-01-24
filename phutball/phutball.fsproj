@@ -48,9 +48,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Board.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="Drawing.fsx" />
+    <None Include="SomeTyping.fsx" />
+    <None Include="Script1.fsx" />
+    <None Include="Run.fsx" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
