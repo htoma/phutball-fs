@@ -10,8 +10,8 @@ type State =
 
 type BoardForm() = 
     //constants
-    let width = 370
-    let height = 610
+    let formWidth = 370
+    let formHeight = 610
     let cellsX = 14    
     let cellsY = 18
     let offsetMarkersX = 20
@@ -21,16 +21,25 @@ type BoardForm() =
     let offsetTextX = 15
     let offsetTextY = 12
     let cellSize = 20
+    let width = cellsX*cellSize
+    let height = cellsY*cellSize
+    let goalPosts = 2
+    let heightWithPosts = height+2*cellSize
 
     let mutable board = initializeBoard (cellsX+1,cellsY+1)
     let mutable state = State.ChooseMove
     let mutable moveType = MoveType.Player
 
-    let drawButton (form:Form) (x,y) caption (sizeX, sizeY) enabled callback = 
-        let button = new Button(Text=caption, Top=y, Left=x, 
-                                BackColor=Color.Beige, Size=new Size(sizeX, sizeY), Enabled=enabled)
+    let buttonBall = new Button(BackColor=Color.Beige, Enabled=false)
+    let buttonPlayer = new Button(BackColor=Color.Beige, Enabled=false)
+    let buttonOk = new Button(BackColor=Color.Beige, Enabled=false)
+
+    let initializeButton (button:Button) left top caption sizeX sizeY enabled callback = 
+        button.Text<-caption
+        button.Top<-top
+        button.Left<-left
+        button.Size<-new Size(sizeX,sizeY)
         button.Click.Add(callback)
-        form.Controls.Add button
 
     let drawElement (g:Graphics) x y (color:Color) =
         use brush = new SolidBrush(color)
@@ -43,17 +52,7 @@ type BoardForm() =
         positions
         |> List.iter (fun (i,j) -> drawElement g i j Color.AntiqueWhite)
             
-    let rec drawBoard (form:Form) (board:BoardElement[,]) = 
-        let chooseMove (move:MoveType) =
-            fun _ ->
-                moveType<-move
-                state<-State.MoveSelected
-                drawBoard form board
-        let width = cellsX*cellSize
-        let height = cellsY*cellSize
-        let goalPosts = 2
-        let heightWithPosts = height+2*cellSize
-
+    let drawBoard (form:Form) (board:BoardElement[,]) =         
         use g = form.CreateGraphics()
         use font = new Font("Arial", 10.f)
         use textBrush = new SolidBrush(Color.Black)
@@ -94,11 +93,10 @@ type BoardForm() =
         | State.ChooseMove ->
             let ballPositions = possibleBallPositions board
             printfn "Should allow ball moves: %i" ballPositions.Length
-            drawButton form (offsetX, buttonY) "Ball" (buttonWidth, buttonHeight) (ballPositions.Length>0) (chooseMove MoveType.Ball)
+            buttonBall.Enabled<-(ballPositions.Length>0)
 
             let playerPositions = possiblePlayerPositions board
-            drawButton form (offsetX+buttonSpacing+buttonWidth, buttonY) "Player" (buttonWidth, buttonHeight) (playerPositions.Length>0) (chooseMove MoveType.Player)
-            drawButton form (offsetX, buttonY+buttonSpacing+buttonHeight) "OK" (buttonWidth, buttonHeight) false (fun _ -> ())
+            buttonPlayer.Enabled<-(playerPositions.Length>0)
         | State.MoveSelected ->
             //show possible positions only on mouse over
             ()
@@ -113,8 +111,26 @@ type BoardForm() =
         // undo button is for later
         //drawButton form (offsetX+buttonSpacing+buttonWidth, buttonY+buttonSpacing+buttonHeight) "Undo" (buttonWidth, buttonHeight)
 
+    let chooseMove (form:Form) (move:MoveType) =
+        fun _ ->
+            moveType<-move
+            state<-State.MoveSelected
+            drawBoard form board
+
+    let drawButtons (form:Form) =
+        let buttonSpacing = 10
+        let buttonWidth = (width-buttonSpacing)/2
+        let buttonHeight = 30
+        let buttonY = offsetY+height+80
+
+        initializeButton buttonBall offsetX buttonY "Ball" buttonWidth buttonHeight false (chooseMove form MoveType.Ball)
+        initializeButton buttonPlayer (offsetX+buttonSpacing+buttonWidth) buttonY "Player" buttonWidth buttonHeight false (chooseMove form MoveType.Player)
+        initializeButton buttonOk offsetX (buttonY+buttonSpacing+buttonHeight) "OK" buttonWidth buttonHeight false (fun _ -> ())
+        [buttonBall; buttonPlayer; buttonOk] |> Seq.cast<Control> |> Array.ofSeq |> form.Controls.AddRange
+
+
     let initializeForm() =         
-        let form = new Form(Width=width, Height=height, Visible=true, Text="Phutball", TopMost=true)
+        let form = new Form(Width=formWidth, Height=formHeight, Visible=true, Text="Phutball", TopMost=true)
         
         form.MouseClick.Add(fun arg -> 
             let x = (arg.X-offsetX+cellSize/2)/cellSize
@@ -128,10 +144,12 @@ type BoardForm() =
                     state<-State.ChooseMove
                     drawBoard form board
            )
-        
+
         form.Paint.Add(fun e -> 
             printfn "Drawing"
-            drawBoard form board)      
+            drawBoard form board) 
+            
+        drawButtons form    
         
     member this.Start() =
         initializeForm()
