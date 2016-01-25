@@ -92,7 +92,6 @@ type BoardForm() =
         match state with
         | State.ChooseMove ->
             let ballPositions = possibleBallPositions board
-            printfn "Should allow ball moves: %i" ballPositions.Length
             buttonBall.Enabled<-(ballPositions.Length>0)
 
             let playerPositions = possiblePlayerPositions board
@@ -138,7 +137,6 @@ type BoardForm() =
             if x>=0&&y>=0 then
                 if (state=State.MoveSelected && moveAllowed board moveType (x,y)) then
                     let el = if moveType=MoveType.Ball then BoardElement.Ball else BoardElement.Player
-                    //make the move
                     let gs,newBoard = move board moveType (x,y)
                     board<-newBoard
                     state<-State.ChooseMove
@@ -146,7 +144,6 @@ type BoardForm() =
            )
 
         form.Paint.Add(fun e -> 
-            printfn "Drawing"
             drawBoard form board) 
             
         drawButtons form    
