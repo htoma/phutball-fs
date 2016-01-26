@@ -44,50 +44,61 @@
 
     let possibleBallPositions (board: BoardElement[,]) =
         let i,j = findBall board
-        let n,m = boardDimensions board
+        let m,n = boardDimensions board
         let rec avance (direction: BallDirection) x y start =
             //some positions may result in goals
-            if (y=(-1) && x>=0 && x<m) || (y=n && x>=0 && x<m) then Some(x, y)
-            elif x<0 || x=m || y=(-1) || y=n then None
+            if x<0 || x=m || y=(-1) || y=n then None
             else
                 match direction with
                 | BallDirection.NorthWest ->
-                    if board.[x-1,y-1]=BoardElement.Player then
+                    if x=0 then None
+                    elif y=0 then if start then None else Some(x-1,y-1) //Goal!
+                    elif board.[x-1,y-1]=BoardElement.Player then
                         avance direction (x-1) (y-1) false
                     else
                         if start then None else Some(x-1,y-1)                
                 | BallDirection.North ->
-                    if board.[x,y-1]=BoardElement.Player then
+                    if y=0 then Some(x,y-1) //Goal!
+                    elif board.[x,y-1]=BoardElement.Player then
                         avance direction x (y-1) false
                     else
                         if start then None else Some(x,y-1)
                 | BallDirection.NorthEast ->
-                    if board.[x+1,y-1]=BoardElement.Player then
+                    if x=m-1 then None 
+                    elif y=0 then if start then None else Some(x+1,y-1) //Goal!
+                    elif board.[x+1,y-1]=BoardElement.Player then
                         avance direction (x+1) (y-1) false
                     else
                         if start then None else Some(x+1,y-1)
                 | BallDirection.East ->
-                    if board.[x+1,y]=BoardElement.Player then
+                    if x=m-1 then None
+                    elif board.[x+1,y]=BoardElement.Player then
                         avance direction (x+1) y false
                     else
                         if start then None else Some(x+1,y)
                 | BallDirection.SouthEast ->
-                    if board.[x+1,y+1]=BoardElement.Player then
+                    if x=m-1 then None
+                    elif y=n-1 then if start then None else Some (x+1,y+1) //Goal!
+                    elif board.[x+1,y+1]=BoardElement.Player then
                         avance direction (x+1) (y+1) false
                     else
                         if start then None else Some(x+1,y+1)
                 | BallDirection.South ->
-                    if board.[x,y+1]=BoardElement.Player then
+                    if y=n-1 then Some(x,y+1) //Goal!
+                    elif board.[x,y+1]=BoardElement.Player then
                         avance direction x (y+1) false
                     else
                         if start then None else Some(x,y+1)
                 | BallDirection.SouthWest ->
-                    if board.[x-1,y+1]=BoardElement.Player then
+                    if x=0 then None
+                    elif y=n-1 then if start then None else Some(x-1,y+1)
+                    elif board.[x-1,y+1]=BoardElement.Player then
                         avance direction (x-1) (y+1) false
                     else
                         if start then None else Some(x-1,y+1)
                 | BallDirection.West ->
-                    if board.[x-1,y]=BoardElement.Player then
+                    if x=0 then None
+                    elif board.[x-1,y]=BoardElement.Player then
                         avance direction (x-1) y false
                     else
                         if start then None else Some(x-1,y)
@@ -124,7 +135,7 @@
 
     let moveBall (board: BoardElement[,]) (x,y) = 
         let a,b = findBall board
-        let n,m = boardDimensions board
+        let m,n = boardDimensions board
         if a=x && b=y then GameState.On,board
         else
             if x>=0 && x<m && (y=(-1) || y=n) then
