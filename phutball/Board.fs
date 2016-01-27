@@ -20,9 +20,13 @@
         | SouthWest
         | West
 
+    type Team =
+        | Up
+        | Down
+
     type GameState =
         | On
-        | Over
+        | Goal of Team
 
     let boardDimensions (board: BoardElement[,]) =
         board |> Array2D.length1, board |> Array2D.length2
@@ -132,6 +136,9 @@
             List.exists (fun v -> match v with
                                   | Some (i,j) -> i=x && j=y
                                   | None -> false) positions
+    
+    let teamThatScored y =
+        GameState.Goal (if y=(-1) then Team.Up else Team.Down) 
 
     let moveBall (board: BoardElement[,]) (x,y) = 
         let a,b = findBall board
@@ -139,7 +146,7 @@
         if a=x && b=y then GameState.On,board
         else
             if x>=0 && x<m && (y=(-1) || y=n) then
-                GameState.Over,board
+                teamThatScored y,board
             else
                 let direction =
                     if x=a then
@@ -150,8 +157,7 @@
                         if y<b then BallDirection.SouthWest else BallDirection.NorthWest
                     else
                         if y<b then BallDirection.SouthEast else BallDirection.NorthEast
-                printfn "Direction is %A" direction
-
+                
                 //clean the players jumped
                 match direction with
                  | BallDirection.NorthWest ->
@@ -186,14 +192,18 @@
                 GameState.On,board
         
     let move (board: BoardElement[,]) (moveType: MoveType) (x,y) =
-        match board.[x,y] with
-        | BoardElement.Ball | BoardElement.Player -> failwith "Position already occupied"
-        | BoardElement.Empty ->
-            match moveType with
-            | MoveType.Player -> 
-                board.[x,y]<-BoardElement.Player
-                GameState.On,board
-            | MoveType.Ball -> 
-                printfn "Moving ball at %i and %i" x y
-                moveBall board (x,y)
+        let m,n = boardDimensions board
+        if y=(-1) || y=n then
+            teamThatScored y,board
+        else
+            match board.[x,y] with
+            | BoardElement.Ball | BoardElement.Player -> failwith "Position already occupied"
+            | BoardElement.Empty ->
+                match moveType with
+                | MoveType.Player -> 
+                    board.[x,y]<-BoardElement.Player
+                    GameState.On,board
+                | MoveType.Ball -> 
+                    printfn "Moving ball at %i and %i" x y
+                    moveBall board (x,y)
        

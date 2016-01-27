@@ -7,6 +7,7 @@ open System.Drawing
 type State =
     | ChooseMove
     | MoveSelected
+    | GameOver of Team
 
 type BoardForm() = 
     //constants
@@ -26,13 +27,16 @@ type BoardForm() =
     let goalPosts = 2
     let heightWithPosts = height+2*cellSize
 
-    let mutable board = initializeBoard (cellsX+1,cellsY+1)
+    let initBoard () = 
+        initializeBoard (cellsX+1,cellsY+1)
+
+    let mutable board = initBoard()
     let mutable state = State.ChooseMove
     let mutable moveType = MoveType.Player
 
     let buttonBall = new Button(BackColor=Color.Beige, Enabled=false)
     let buttonPlayer = new Button(BackColor=Color.Beige, Enabled=false)
-    let buttonOk = new Button(BackColor=Color.Beige, Enabled=false)
+    let buttonRestart = new Button(BackColor=Color.Beige, Enabled=false)
 
     let initializeButton (button:Button) left top caption sizeX sizeY enabled callback = 
         button.Text<-caption
@@ -51,6 +55,12 @@ type BoardForm() =
     let drawPossiblePositions (g:Graphics) (positions:(int*int) list) =
         positions
         |> List.iter (fun (i,j) -> drawElement g i j Color.AntiqueWhite)
+
+    let drawGoal (g:Graphics) (team: Team) =
+        use font = new Font("Arial", 12.f, FontStyle.Bold)
+        use brush = new SolidBrush(Color.Blue)
+        let y = if team=Team.Down then 0 else cellsY+1
+        g.DrawString("GOAL !!!", font, brush, float32 (offsetX+5*cellSize), float32 (offsetY+cellSize*y))
             
     let drawBoard (form:Form) (board:BoardElement[,]) =         
         use g = form.CreateGraphics()
@@ -97,18 +107,12 @@ type BoardForm() =
             let playerPositions = possiblePlayerPositions board
             buttonPlayer.Enabled<-(playerPositions.Length>0)
         | State.MoveSelected ->
-            //show possible positions only on mouse over
             ()
-//            match moveType with
-//            | MoveType.Ball ->
-//                let positions = possibleBallPositions board
-//                drawPossiblePositions g positions
-//            | MoveType.Player ->
-//                let positions = possiblePlayerPositions board
-//                drawPossiblePositions g positions
-               
-        // undo button is for later
-        //drawButton form (offsetX+buttonSpacing+buttonWidth, buttonY+buttonSpacing+buttonHeight) "Undo" (buttonWidth, buttonHeight)
+        | State.GameOver team->
+            drawGoal g team
+            buttonBall.Enabled<-false
+            buttonPlayer.Enabled<-false
+            buttonRestart.Enabled<-true
 
     let chooseMove (form:Form) (move:MoveType) =
         fun _ ->
@@ -124,8 +128,8 @@ type BoardForm() =
 
         initializeButton buttonBall offsetX buttonY "Ball" buttonWidth buttonHeight false (chooseMove form MoveType.Ball)
         initializeButton buttonPlayer (offsetX+buttonSpacing+buttonWidth) buttonY "Player" buttonWidth buttonHeight false (chooseMove form MoveType.Player)
-        initializeButton buttonOk offsetX (buttonY+buttonSpacing+buttonHeight) "OK" buttonWidth buttonHeight false (fun _ -> ())
-        [buttonBall; buttonPlayer; buttonOk] |> Seq.cast<Control> |> Array.ofSeq |> form.Controls.AddRange
+        initializeButton buttonRestart offsetX (buttonY+buttonSpacing+buttonHeight) "Restart" buttonWidth buttonHeight false (fun _ -> ())
+        [buttonBall; buttonPlayer; buttonRestart] |> Seq.cast<Control> |> Array.ofSeq |> form.Controls.AddRange
 
 
     let initializeForm() =         
@@ -134,14 +138,18 @@ type BoardForm() =
         form.MouseClick.Add(fun arg -> 
             let x = (arg.X-offsetX+cellSize/2)/cellSize
             let y = cellsY-(arg.Y-offsetY-cellSize/2)/cellSize
-            if x>=0&&y>=0 then
-                if (state=State.MoveSelected && moveAllowed board moveType (x,y)) then
-                    let el = if moveType=MoveType.Ball then BoardElement.Ball else BoardElement.Player
-                    let gs,newBoard = move board moveType (x,y)
-                    board<-newBoard
+            if (state=State.MoveSelected && moveAllowed board moveType (x,y)) then
+                let el = if moveType=MoveType.Ball then BoardElement.Ball else BoardElement.Player
+                let gs,newBoard = move board moveType (x,y)
+                match gs with 
+                | GameState.On ->
                     state<-State.ChooseMove
-                    drawBoard form board
-           )
+                    board<-newBoard
+                | GameState.Goal team ->
+                    state<-State.GameOver team
+                    board<-initBoard()
+                drawBoard form board
+            )
 
         form.Paint.Add(fun e -> 
             drawBoard form board) 
