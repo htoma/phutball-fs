@@ -193,7 +193,7 @@
         
     let move (board: BoardElement[,]) (moveType: MoveType) (x,y) =
         let m,n = boardDimensions board
-        if y=(-1) || y=n then
+        if y=(-1) || y=n then            
             teamThatScored y,board
         else
             match board.[x,y] with

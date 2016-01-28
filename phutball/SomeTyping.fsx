@@ -1,4 +1,4 @@
-﻿#r @"C:\work\phutball\phutball\bin\Debug\phutball.exe"
+﻿#r @"C:\work\phutball-fs\phutball\bin\Debug\phutball.exe"
 open Board
 
 open System.Windows.Forms 
@@ -36,7 +36,7 @@ type BoardForm() =
 
     let buttonBall = new Button(BackColor=Color.Beige, Enabled=false)
     let buttonPlayer = new Button(BackColor=Color.Beige, Enabled=false)
-    let buttonRestart = new Button(BackColor=Color.Beige, Enabled=false)
+    let buttonRestart = new Button(BackColor=Color.Beige, Enabled=true)    
 
     let initializeButton (button:Button) left top caption sizeX sizeY enabled callback = 
         button.Text<-caption
@@ -120,6 +120,12 @@ type BoardForm() =
             state<-State.MoveSelected
             drawBoard form board
 
+    let reset (form:Form) =
+        buttonBall.Enabled<-false
+        buttonPlayer.Enabled<-false
+        board<-initBoard()
+        drawBoard form board
+
     let drawButtons (form:Form) =
         let buttonSpacing = 10
         let buttonWidth = (width-buttonSpacing)/2
@@ -128,16 +134,22 @@ type BoardForm() =
 
         initializeButton buttonBall offsetX buttonY "Ball" buttonWidth buttonHeight false (chooseMove form MoveType.Ball)
         initializeButton buttonPlayer (offsetX+buttonSpacing+buttonWidth) buttonY "Player" buttonWidth buttonHeight false (chooseMove form MoveType.Player)
-        initializeButton buttonRestart offsetX (buttonY+buttonSpacing+buttonHeight) "Restart" buttonWidth buttonHeight false (fun _ -> ())
+        initializeButton buttonRestart offsetX (buttonY+buttonSpacing+buttonHeight) "Restart" buttonWidth buttonHeight false (fun _ -> reset form)
         [buttonBall; buttonPlayer; buttonRestart] |> Seq.cast<Control> |> Array.ofSeq |> form.Controls.AddRange
 
+    let cellFromClick x y =
+        let i = (x-offsetX+cellSize/2)/cellSize
+        let tmp = offsetY+cellSize/2
+        let j = 
+            if y-cellSize/2>offsetY then cellsY-(y-offsetY-cellSize/2)/cellSize
+            else cellsY+1
+        i,j
 
     let initializeForm() =         
         let form = new Form(Width=formWidth, Height=formHeight, Visible=true, Text="Phutball", TopMost=true)
         
         form.MouseClick.Add(fun arg -> 
-            let x = (arg.X-offsetX+cellSize/2)/cellSize
-            let y = cellsY-(arg.Y-offsetY-cellSize/2)/cellSize
+            let x,y = cellFromClick arg.X arg.Y
             if (state=State.MoveSelected && moveAllowed board moveType (x,y)) then
                 let el = if moveType=MoveType.Ball then BoardElement.Ball else BoardElement.Player
                 let gs,newBoard = move board moveType (x,y)
