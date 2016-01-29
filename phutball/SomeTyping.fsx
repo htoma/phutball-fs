@@ -1,8 +1,15 @@
-﻿#r @"C:\work\phutball-fs\phutball\bin\Debug\phutball.exe"
+﻿#r @"C:\work\phutball\phutball\bin\Debug\phutball.exe"
 open Board
 
 open System.Windows.Forms 
 open System.Drawing
+
+type CompositeForm () =
+   inherit Form()
+   override this.CreateParams = 
+      let cp = base.CreateParams
+      cp.ExStyle <- cp.ExStyle ||| 0x02000000
+      cp
 
 type State =
     | ChooseMove
@@ -148,7 +155,7 @@ type BoardForm() =
         i,j
 
     let initializeForm() =         
-        let form = new Form(Width=formWidth, Height=formHeight, Visible=true, Text="Phutball", TopMost=true)
+        let form = new CompositeForm(Width=formWidth, Height=formHeight, Visible=true, Text="Phutball", TopMost=true)
         
         form.MouseClick.Add(fun arg -> 
             let x,y = cellFromClick arg.X arg.Y

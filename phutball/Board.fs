@@ -162,7 +162,7 @@
                 match direction with
                  | BallDirection.NorthWest ->
                     for i in [x+1..a-1] do
-                        board.[i,y-(a-i)]<-BoardElement.Empty
+                        board.[i,y-(i-x)]<-BoardElement.Empty
                  | BallDirection.North ->
                     for j in [b+1..y-1] do
                         board.[x,j]<-BoardElement.Empty
@@ -180,7 +180,7 @@
                         board.[x,j]<-BoardElement.Empty
                  | BallDirection.SouthWest ->
                     for i in [x+1..a-1] do
-                        board.[i,y+(a-i)]<-BoardElement.Empty
+                        board.[i,y+(i-x)]<-BoardElement.Empty
                  | BallDirection.West ->
                     for i in [x+1..a-1] do
                         board.[i,y]<-BoardElement.Empty 
@@ -204,6 +204,5 @@
                     board.[x,y]<-BoardElement.Player
                     GameState.On,board
                 | MoveType.Ball -> 
-                    printfn "Moving ball at %i and %i" x y
                     moveBall board (x,y)
        
