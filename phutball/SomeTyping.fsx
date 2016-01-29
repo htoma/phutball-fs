@@ -52,6 +52,11 @@ type BoardForm() =
     let drawStone (g:Graphics) x y (el:BoardElement) =
         drawElement g x y (if el=BoardElement.Ball then Color.Coral else Color.Blue)
 
+    let drawText (g:Graphics) (text:string) (rect:Rectangle) (font:Font) (color:Color) =
+        let flags = TextFormatFlags.HorizontalCenter ||| TextFormatFlags.VerticalCenter ||| TextFormatFlags.WordBreak
+        TextRenderer.DrawText(g, text, font, rect, color, flags)
+        g.DrawRectangle(Pens.Black, rect)
+
     let drawPossiblePositions (g:Graphics) (positions:(int*int) list) =
         positions
         |> List.iter (fun (i,j) -> drawElement g i j Color.AntiqueWhite)
@@ -60,7 +65,8 @@ type BoardForm() =
         use font = new Font("Arial", 12.f, FontStyle.Bold)
         use brush = new SolidBrush(Color.Blue)
         let y = if team=Team.Down then 0 else cellsY+1
-        g.DrawString("GOAL !!!", font, brush, float32 (offsetX+5*cellSize), float32 (offsetY+cellSize*y))
+        let rect = Rectangle(offsetX, offsetY+cellSize*y, width, cellSize)
+        drawText g "GOAL !!!" rect font Color.Blue
             
     let drawBoard (form:Form) (board:BoardElement[,]) =         
         use g = form.CreateGraphics()
@@ -94,11 +100,6 @@ type BoardForm() =
                         drawStone g i j board.[i,j]
                 | _ -> ()            
 
-        let buttonSpacing = 10
-        let buttonWidth = (width-buttonSpacing)/2
-        let buttonHeight = 30
-        let buttonY = offsetY+height+80
-
         match state with
         | State.ChooseMove ->
             let ballPositions = possibleBallPositions board
@@ -121,10 +122,11 @@ type BoardForm() =
             drawBoard form board
 
     let reset (form:Form) =
+        state<-State.ChooseMove
         buttonBall.Enabled<-false
         buttonPlayer.Enabled<-false
         board<-initBoard()
-        drawBoard form board
+        drawBoard form board    
 
     let drawButtons (form:Form) =
         let buttonSpacing = 10
@@ -159,7 +161,6 @@ type BoardForm() =
                     board<-newBoard
                 | GameState.Goal team ->
                     state<-State.GameOver team
-                    board<-initBoard()
                 drawBoard form board
             )
 
