@@ -1,191 +1,87 @@
-﻿open System
+﻿// Flappy bird prototype using Windows Forms
+// Note: no collision detection
 
-type BoardElement = 
-    | Empty
-    | Player
-    | Ball
+#if INTERACTIVE
+#r "System.Drawing.dll"
+#r "System.Windows.Forms.dll"
+#endif
+open System.IO
+open System.Drawing
+open System.Windows.Forms
+open System.Net
 
-type MoveType = 
-    | Player
-    | Ball
+/// Double-buffered form
+type CompositedForm () =
+   inherit Form()
+   override this.CreateParams = 
+      let cp = base.CreateParams
+      cp.ExStyle <- cp.ExStyle ||| 0x02000000
+      cp
 
-type BallDirection = 
-    | NorthWest
-    | North
-    | NorthEast
-    | East
-    | SouthEast
-    | South
-    | SouthWest
-    | West
+/// Loads an image from a file or url
+let load (file:string) (url:string) =
+   let path = Path.Combine(__SOURCE_DIRECTORY__, file)
+   if File.Exists path then Image.FromFile path
+   else
+      let request = HttpWebRequest.Create(url)
+      use response = request.GetResponse()
+      use stream = response.GetResponseStream()
+      Image.FromStream(stream)
 
-type GameState =
-    | On
-    | Over
+let bg = load "bg.png" "http://flappycreator.com/default/bg.png"
+let ground = load "ground.png" "http://flappycreator.com/default/ground.png"
+let tube1 = load "tube1.png" "http://flappycreator.com/default/tube1.png"
+let tube2 = load "tube2.png" "http://flappycreator.com/default/tube2.png"
+let bird_sing = load "bird_sing.png" "http://flappycreator.com/default/bird_sing.png"
 
-let printElement (v: BoardElement) = 
-    match v with
-    | BoardElement.Empty -> "."
-    | BoardElement.Player -> "x"
-    | BoardElement.Ball -> "o"
+/// Bird type
+type Bird = { X:float; Y:float; VY:float }
+/// Respond to flap command
+let flap (bird:Bird) = { bird with VY = - System.Math.PI }
+/// Applies gravity to bird
+let gravity (bird:Bird) = { bird with VY = bird.VY + 0.1 }
+/// Applies physics to bird
+let physics (bird:Bird) = { bird with Y = bird.Y + bird.VY }
+/// Updates bird with gravity & physics
+let update = gravity >> physics
 
-let boardDimensions (board: BoardElement[,]) =
-    board |> Array2D.length1, board |> Array2D.length2
-
-let print board = 
-    let n,m = boardDimensions board
-    for i in [0..n-1] do
-        printf "|"
-        for j in [0..m-1] do
-            printf "%s" (board.[i,j] |> printElement)
-        printfn "|"
+/// Paints the game scene
+let paint (graphics:Graphics) scroll level (flappy:Bird) =
+   let draw (image:Image) (x,y) =
+      graphics.DrawImage(image,x,y,image.Width,image.Height)
+   draw bg (0,0)
+   draw bird_sing (int flappy.X, int flappy.Y)
+   let drawTube (x,y) =      
+      draw tube1 (x-scroll,-320+y)
+      draw tube2 (x-scroll,y+100)
+   for (x,y) in level do drawTube (x,y)
+   draw ground (0,340)
     
-let initialize (n: int, m: int) = 
-    match n,m with
-    | x,y when x>1 && y>1 && x%2>0 && y%2>0 -> 
-          let board = Array2D.init n m (fun _ _ -> BoardElement.Empty)
-          board.[(n-1)/2,(m-1)/2]<- BoardElement.Ball
-          board
-    | _ -> failwith "Board dimensions should be not even"
+/// Generates the level's tube positions
+let generateLevel n =
+   let rand = System.Random()
+   [for i in 1..n -> 50+(i*150), 32+rand.Next(160)]
 
-let findBall (board: BoardElement[,]) =
-    board
-    |> Array2D.mapi (fun i j el -> i,j,el)
-    |> Seq.cast<int*int*BoardElement>
-    |> Seq.find (fun (_,_,el) -> el=BoardElement.Ball)
-    |> fun (i,j,_) -> (i,j)
+let level = generateLevel 10
+let scroll = ref 0
+let flappy = ref { X = 30.0; Y = 150.0; VY = 0.0}
 
-let possibleBallPositions (board: BoardElement[,]) =
-    let i,j = findBall board
-    let rec avance (direction: BallDirection) x y =
-        if x>=0 && y>=0 && board.[x,y]=BoardElement.Player then
-            match direction with
-            | BallDirection.NorthWest ->
-                avance direction (x-1) (y-1)
-            | BallDirection.North ->
-                avance direction (x-1) y
-            | BallDirection.NorthEast ->
-                avance direction (x-1) (y+1)
-            | BallDirection.East ->
-                avance direction x (y+1)
-            | BallDirection.SouthEast ->
-                avance direction (x+1) (y+1)
-            | BallDirection.South ->
-                avance direction (x+11) y
-            | BallDirection.SouthWest ->
-                avance direction (x+1) (y-1)
-            | BallDirection.West ->
-                avance direction x (y-1)
-        else
-            x,y
-    [BallDirection.NorthWest
-     BallDirection.North
-     BallDirection.NorthEast
-     BallDirection.East
-     BallDirection.SouthEast
-     BallDirection.South
-     BallDirection.SouthWest
-     BallDirection.South]
-     |> List.map (fun direction -> avance direction i j)
-     |> List.filter (fun (x,y) -> x<>i && y<>j)
+let form = new CompositedForm(Text="Flap me",Width=288,Height=440)
+form.Paint.Add(fun args ->
+   flappy := update !flappy
+   paint args.Graphics !scroll level !flappy; 
+   incr scroll)
 
-let possiblePlayerPositions (board: BoardElement[,]) =
-    let empty = board
-                |> Array2D.mapi (fun i j el -> if el=BoardElement.Empty then (i,j) else (-1,j))
-                |> Seq.cast<int*int>
-                |> Seq.filter (fun (i,j) -> i>=0)
-                |> List.ofSeq
-    // can't allow the last empty position to be occupied by a player
-    if empty.Length>1 then empty else []
-
-let moveBall (board: BoardElement[,]) (x,y) = 
-    let a,b = findBall board
-    let n,m = boardDimensions board
-    if a=x && b=y then GameState.On,board
-    else
-        if x<0 || x=n || y<0 || y=m then
-            GameState.Over,board
-        else
-            let direction =
-                if x=a then
-                    if y>b then BallDirection.East else BallDirection.West
-                elif y=b then
-                    if x<a then BallDirection.North else BallDirection.South
-                elif x<a then
-                    if y<b then BallDirection.NorthWest else BallDirection.NorthEast
-                else
-                    if y<b then BallDirection.SouthWest else BallDirection.SouthEast
-            match direction with
-             | BallDirection.NorthWest ->
-                for i in [x+1..a-1] do
-                    board.[i,y-(a-i)]<-BoardElement.Empty
-             | BallDirection.North ->
-                for i in [a+1..x-1] do
-                    board.[i,b]<-BoardElement.Empty
-             | BallDirection.NorthEast ->
-                for i in [a+1..x-1] do
-                    board.[i,y-(a-i)]<-BoardElement.Empty
-             | BallDirection.East ->
-                for j in [b+1..y-1] do
-                    board.[x,j]<-BoardElement.Empty
-             | BallDirection.SouthEast ->
-                for i in [a+1..x-1] do
-                    board.[i,y+(a-i)]<-BoardElement.Empty
-             | BallDirection.South ->
-                for i in [x+1..a-1] do
-                    board.[i,b]<-BoardElement.Empty
-             | BallDirection.SouthWest ->
-                for i in [a+1..x-1] do
-                    board.[i,y-(a-i)]<-BoardElement.Empty
-             | BallDirection.West ->
-                for j in [y+1..b-1] do
-                    board.[x,j]<-BoardElement.Empty 
-                    
-            GameState.On,board
-        
-
-let move (board: BoardElement[,]) (moveType: MoveType) (x,y) =
-    match board.[x,y] with
-    | BoardElement.Empty -> failwith "Position already occupied"
-    | _ ->
-        match moveType with
-        | MoveType.Player -> 
-            board.[x,y]<-BoardElement.Player
-            GameState.On,board
-        | MoveType.Ball -> 
-            moveBall board (x,y)
-
-let printPlayOption() =
-    printfn "Select move"
-    printfn "1 - Player"
-    printfn "2 - Ball"
-
-let printPositions positions =
-    printfn "Available positions"
-    positions
-    |> List.map (fun (x,y) -> printf "(%i,%i)" x y)
-
-let play (board: BoardElement[,]) = 
-    let rec turn (state: GameState) (board: BoardElement[,]) = 
-        if turn=GameState.Over then
-            printfn "Game Over!"
-        else
-            print board
-            printPlayOption()
-            let key = Console.ReadKey()
-            match key with
-            | 1 ->
-                let positions = possiblePlayerPositions board
-                match positions with
-                | [] -> 
-                    printfn "There is no available position for placing a player"
-                    turn GameState.On board
-                | _ ->
-                    printPositions positions
-                    printfn "Select a position for your player: x,y"
-                    let line = Console.ReadLine()
-                    
-    
-
-let board = initialize (19,15)
-print board
+let flapme () =  flappy := flap !flappy
+// Respond to mouse clicks
+form.Click.Add(fun args -> flapme())
+// Respond to space key
+form.KeyDown.Add(fun args -> if args.KeyCode = Keys.Space then flapme())
+// Show form
+form.Show()
+// Update form asynchronously every 18ms
+async { 
+   while true do
+      do! Async.Sleep(18)
+      form.Invalidate() 
+} |> Async.StartImmediate

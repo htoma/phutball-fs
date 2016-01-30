@@ -130,7 +130,8 @@
     let moveAllowed (board: BoardElement[,]) (moveType: MoveType) (x,y) = 
         match moveType with
         | MoveType.Player ->
-            board.[x,y]=BoardElement.Empty
+            let m,n = boardDimensions board
+            x>=0 && x<m && y>=0 && y<n && board.[x,y]=BoardElement.Empty
         | MoveType.Ball ->
             let positions = possibleBallPositions board
             List.exists (fun v -> match v with
