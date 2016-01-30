@@ -1,6 +1,7 @@
 ﻿#r @"C:\work\phutball\phutball\bin\Debug\phutball.exe"
 open Board
 
+open System
 open System.Windows.Forms 
 open System.Drawing
 
@@ -53,12 +54,29 @@ type BoardForm() =
         button.Size<-new Size(sizeX,sizeY)
         button.Click.Add(callback)
 
+    let drawingPositionFromCell x y =
+        new Rectangle(offsetX+x*cellSize-cellSize/2, offsetY+(cellsY-y+1)*cellSize-cellSize/2, cellSize, cellSize)
+
     let drawElement (g:Graphics) x y (color:Color) =
         use brush = new SolidBrush(color)
-        g.FillEllipse(brush, new Rectangle(offsetX+x*cellSize-cellSize/2, offsetY+(cellsY-y+1)*cellSize-cellSize/2, cellSize, cellSize))
+        g.FillEllipse(brush, drawingPositionFromCell x y)
+
+    let load (file:string) =
+       let path = IO.Path.Combine(__SOURCE_DIRECTORY__, "images", file)
+       Image.FromFile path
+
+    let drawImage (g:Graphics) (image:Image) (x:int) (y:int) =
+        g.DrawImage(image, drawingPositionFromCell x y)
+
+    let drawPlayer (g:Graphics) x y =
+        let image = load "player1.png"
+        drawImage g image x y 
 
     let drawStone (g:Graphics) x y (el:BoardElement) =
-        drawElement g x y (if el=BoardElement.Ball then Color.Coral else Color.Blue)
+        if el=BoardElement.Ball then
+            drawElement g x y Color.Coral
+        else
+            drawPlayer g x y
 
     let drawText (g:Graphics) (text:string) (rect:Rectangle) (font:Font) (color:Color) =
         let flags = TextFormatFlags.HorizontalCenter ||| TextFormatFlags.VerticalCenter ||| TextFormatFlags.WordBreak
@@ -81,7 +99,7 @@ type BoardForm() =
         use font = new Font("Arial", 10.f)
         g.DrawRectangle(pen, offsetX,  offsetY+heightWithPosts+25, width, 2*cellSize)
         drawText g text rect font Color.IndianRed
-
+       
     let drawBoard (form:Form) (board:BoardElement[,]) =   
         use g = form.CreateGraphics()
         use font = new Font("Arial", 10.f)
