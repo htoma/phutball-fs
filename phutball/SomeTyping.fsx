@@ -1,5 +1,6 @@
 ﻿#r @"C:\work\phutball\phutball\bin\Debug\phutball.exe"
 open Board
+open Game
 
 open System
 open System.Windows.Forms 
@@ -12,17 +13,10 @@ type CompositeForm () =
       cp.ExStyle <- cp.ExStyle ||| 0x02000000
       cp
 
-type State =
-    | ChooseMove
-    | MoveSelected
-    | GameOver of Team
-
 type BoardForm() = 
     //constants
     let formWidth = 370
     let formHeight = 630
-    let cellsX = 14    
-    let cellsY = 18
     let offsetMarkersX = 20
     let offsetMarkersY = 20
     let offsetX = offsetMarkersX+20
@@ -30,17 +24,13 @@ type BoardForm() =
     let offsetTextX = 15
     let offsetTextY = 12
     let cellSize = 20
-    let width = cellsX*cellSize
-    let height = cellsY*cellSize
     let goalPosts = 2
+    
+    let game = Game()
+
+    let width = game.CellsX*cellSize
+    let height = game.CellsY*cellSize
     let heightWithPosts = height+2*cellSize
-
-    let initBoard () = 
-        initializeBoard (cellsX+1,cellsY+1)
-
-    let mutable board = initBoard()
-    let mutable state = State.ChooseMove
-    let mutable moveType = MoveType.Player
 
     let buttonBall = new Button(BackColor=Color.Beige, Enabled=false)
     let buttonPlayer = new Button(BackColor=Color.Beige, Enabled=false)
@@ -55,7 +45,7 @@ type BoardForm() =
         button.Click.Add(callback)
 
     let drawingPositionFromCell x y =
-        new Rectangle(offsetX+x*cellSize-cellSize/2, offsetY+(cellsY-y+1)*cellSize-cellSize/2, cellSize, cellSize)
+        new Rectangle(offsetX+x*cellSize-cellSize/2, offsetY+(game.CellsY-y+1)*cellSize-cellSize/2, cellSize, cellSize)
 
     let drawElement (g:Graphics) x y (color:Color) =
         use brush = new SolidBrush(color)
@@ -69,12 +59,18 @@ type BoardForm() =
         g.DrawImage(image, drawingPositionFromCell x y)
 
     let drawPlayer (g:Graphics) x y =
-        let image = load "player1.png"
-        drawImage g image x y 
+        //note(htoma): uncomment for drawing player icon instead of stone
+        //let image = load "player1.png"
+        //drawImage g image x y
+        drawElement g x y Color.Blue
 
-    let drawStone (g:Graphics) x y (el:BoardElement) =
+    let drawBall (g:Graphics) x y =
+        let image = load "ball.png"
+        drawImage g image x y
+
+    let drawPlayerBall (g:Graphics) x y (el:BoardElement) =
         if el=BoardElement.Ball then
-            drawElement g x y Color.Coral
+            drawBall g x y
         else
             drawPlayer g x y
 
@@ -90,7 +86,7 @@ type BoardForm() =
     let drawGoal (g:Graphics) (team: Team) =
         use font = new Font("Arial", 12.f, FontStyle.Bold)
         use brush = new SolidBrush(Color.Blue)
-        let y = if team=Team.Down then 0 else cellsY+1
+        let y = if team=Team.Down then 0 else game.CellsY+1
         let rect = Rectangle(offsetX, offsetY+cellSize*y, width, cellSize)
         drawText g "GOAL !!!" rect font Color.Blue
 
@@ -104,9 +100,9 @@ type BoardForm() =
         use g = form.CreateGraphics()
         use font = new Font("Arial", 10.f)
         use textBrush = new SolidBrush(Color.Black)
-        for i in [cellsY+2..-1..0] do
-            g.DrawString(sprintf "%2i" i, font, textBrush, float32 offsetMarkersX, float32 (offsetMarkersY+offsetTextY+cellSize*(cellsY+2-i)))
-            g.DrawString(sprintf "%2i" i, font, textBrush, float32 (offsetX+width), float32 (offsetMarkersY+offsetTextY+cellSize*(cellsY+2-i)))
+        for i in [game.CellsY+2..-1..0] do
+            g.DrawString(sprintf "%2i" i, font, textBrush, float32 offsetMarkersX, float32 (offsetMarkersY+offsetTextY+cellSize*(game.CellsY+2-i)))
+            g.DrawString(sprintf "%2i" i, font, textBrush, float32 (offsetX+width), float32 (offsetMarkersY+offsetTextY+cellSize*(game.CellsY+2-i)))
         ["A";"B";"C";"D";"E";"F";"G";"H";"J";"K";"L";"M";"N";"O";"P"]
         |> List.iteri (fun i v -> 
             g.DrawString(v, font, textBrush, float32 (offsetMarkersX+offsetTextX+i*cellSize), float32 offsetMarkersY)
@@ -120,26 +116,26 @@ type BoardForm() =
         g.FillRectangle(goalBrush, offsetX, offsetY+cellSize+height, width, cellSize)
 
         use pen = new Pen(Brushes.Black)
-        for i in [0..cellsX] do
+        for i in [0..game.CellsX] do
             g.DrawLine(pen, offsetX+i*cellSize, offsetY, offsetX+i*cellSize, offsetY+heightWithPosts)
-        for i in [0..cellsY+goalPosts] do
+        for i in [0..game.CellsY+goalPosts] do
             g.DrawLine(pen, offsetX, offsetY+i*cellSize, offsetX+width, offsetY+i*cellSize)
 
-        for i in [0..cellsX] do
-            for j in [0..cellsY] do
+        for i in [0..game.CellsX] do
+            for j in [0..game.CellsY] do
                 match board.[i,j] with 
                 | BoardElement.Ball | BoardElement.Player ->
-                        drawStone g i j board.[i,j]
+                        drawPlayerBall g i j board.[i,j]
                 | _ -> ()
 
         let rect = new Rectangle(offsetX,  offsetY+heightWithPosts+25, width, 2*cellSize)        
 
         match state with
         | State.ChooseMove ->
-            let ballPositions = possibleBallPositions board
-            buttonBall.Enabled<-(ballPositions.Length>0)
-            let playerPositions = possiblePlayerPositions board
-            buttonPlayer.Enabled<-(playerPositions.Length>0)
+            let moveBallAllowed = game.MoveAllowed board MoveType.Ball 
+            buttonBall.Enabled<-moveBallAllowed
+            let movePlayerAllowerd = game.MoveAllowed board MoveType.Player 
+            buttonPlayer.Enabled<-movePlayerAllowerd
             drawMoveMessage g rect "Choose move"            
         | State.MoveSelected ->
            drawMoveMessage g rect (sprintf "Move selected: %A" moveType)
@@ -152,16 +148,14 @@ type BoardForm() =
 
     let chooseMove (form:Form) (move:MoveType) =
         fun _ ->
-            moveType<-move
-            state<-State.MoveSelected
-            drawBoard form board
+            game.ChooseMove()
+            drawBoard form game.Board
 
     let reset (form:Form) =
-        state<-State.ChooseMove
+        game.Reset()
         buttonBall.Enabled<-false
-        buttonPlayer.Enabled<-false
-        board<-initBoard()
-        drawBoard form board    
+        buttonPlayer.Enabled<-false        
+        drawBoard form game.Board   
 
     let drawButtons (form:Form) =
         let buttonSpacing = 5
@@ -179,8 +173,8 @@ type BoardForm() =
         let i = (x-offsetX+cellSize/2)/cellSize
         let tmp = offsetY+cellSize/2
         let j = 
-            if y-cellSize/2>offsetY then cellsY-(y-offsetY-cellSize/2)/cellSize
-            else cellsY+1
+            if y-cellSize/2>offsetY then game.CellsY-(y-offsetY-cellSize/2)/cellSize
+            else game.CellsY+1
         i,j
 
     let initializeForm() =         
@@ -188,22 +182,11 @@ type BoardForm() =
         
         form.MouseClick.Add(fun arg -> 
             let x,y = cellFromClick arg.X arg.Y
-            if x<0 || x>cellsX || y<(-1) || y>cellsY+1 then ()
-            else
-                if (state=State.MoveSelected && moveAllowed board moveType (x,y)) then
-                    let el = if moveType=MoveType.Ball then BoardElement.Ball else BoardElement.Player
-                    let gs,newBoard = move board moveType (x,y)
-                    match gs with 
-                    | GameState.On ->
-                        state<-State.ChooseMove
-                        board<-newBoard
-                    | GameState.Goal team ->
-                        state<-State.GameOver team
-                    drawBoard form board
-                )
+            drawBoard form game.Board
+            )
 
         form.Paint.Add(fun e -> 
-            drawBoard form board) 
+            drawBoard form game.Board) 
             
         drawButtons form    
         
