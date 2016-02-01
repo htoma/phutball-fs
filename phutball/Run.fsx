@@ -1,4 +1,4 @@
-﻿#r @"C:\work\phutball-fs\phutball\bin\Debug\phutball.exe"
+﻿#r @"bin/Debug/phutball.dll"
 open Drawing
 
 let form = BoardForm()

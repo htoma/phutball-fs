@@ -88,6 +88,8 @@
             use brush = new SolidBrush(Color.Blue)
             let y = if team=Team.Down then 0 else game.CellsY+1
             let rect = Rectangle(offsetX, offsetY+cellSize*y, width, cellSize)
+            use goalBrush = new SolidBrush(Color.LawnGreen)
+            g.FillRectangle(goalBrush, rect)
             drawText g "GOAL !!!" rect font Color.Blue
 
         let drawMoveMessage (g:Graphics) (rect:Rectangle) (text:string) = 
