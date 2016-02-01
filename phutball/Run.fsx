@@ -1,7 +1,8 @@
-﻿#r @"C:\work\phutball\phutball\bin\Debug\phutball.exe"
-open Board
+﻿#r @"C:\work\phutball-fs\phutball\bin\Debug\phutball.exe"
+open Drawing
 
-let board = initialize (19,15)
+let form = BoardForm()
+form.Start()
 
 
 
