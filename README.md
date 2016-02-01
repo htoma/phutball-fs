@@ -7,4 +7,6 @@ There's no AI involved, players take turns and move either a stone representing 
 
 I chose to test my engine via a basic form, but the code that defines the board and the game dynamics is separated in a module and can be used with other types of visualisation layers.
 
+Play by using the interactive script Run.fsx
+
 ![alt tag](http://s15.postimg.org/ald718hu3/phutball.png)
