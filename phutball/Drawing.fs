@@ -146,7 +146,7 @@
                 buttonPlayer.Enabled<-movePlayerAllowed
                 drawMoveMessage g rect (sprintf "Player %i, Select Move" player)        
             | State.MoveSelected ->
-               drawMoveMessage g rect (sprintf "Player %i, Move selected: %A" player game.Move)
+               drawMoveMessage g rect (sprintf "Player %i, Move selected: %A" player game.MoveType)
             | State.GameOver team->
                 drawGoal g team
                 buttonBall.Enabled<-false
@@ -156,7 +156,7 @@
 
         let chooseMove (form:Form) (move:MoveType) =
             fun _ ->
-                game.ChooseMove move
+                game.SelectMove move
                 drawBoard form game.Board
 
         let reset (form:Form) =
@@ -190,7 +190,7 @@
         
             form.MouseClick.Add(fun arg -> 
                 let x,y = cellFromClick arg.X arg.Y
-                game.CellSelected (x,y)
+                game.PerformMove (x,y)
                 drawBoard form game.Board
                 )
 

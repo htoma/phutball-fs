@@ -28,34 +28,29 @@
         member this.Board
             with get() = board
 
-        member this.Turn
-            with get() = turn
-
         member this.CellsX 
             with get() = cellsX
 
         member this.CellsY 
             with get() = cellsY
 
+        member this.Turn
+            with get() = turn
+        
         member this.State
             with get() = state
-
-        member this.Move
+        
+        member this.MoveType
             with get() = moveType
 
-        member this.ChooseMove (move:MoveType) =
-            moveType<-move
-            state<-State.MoveSelected        
-            
         member this.MoveAllowed (board: BoardElement[,]) (moveType: MoveType) = 
             builder.MoveAllowed board moveType
 
-        member this.Reset () =
-            state<-State.ChooseMove
-            turn<-Turn.First
-            board<-initBoard()
+        member this.SelectMove (move:MoveType) =
+            moveType<-move
+            state<-State.MoveSelected        
 
-        member this.CellSelected (x,y) = 
+        member this.PerformMove (x,y) = 
             if x<0 || x>cellsX || y<(-1) || y>cellsY+1 then ()
             else
                 if (state=State.MoveSelected && builder.MoveAllowedToPosition board moveType (x,y)) then
@@ -68,8 +63,8 @@
                         board<-newBoard
                     | GameState.Goal team ->
                         state<-State.GameOver team
-               
-
-   
-
-
+                                   
+        member this.Reset () =
+            state<-State.ChooseMove
+            turn<-Turn.First
+            board<-initBoard()
